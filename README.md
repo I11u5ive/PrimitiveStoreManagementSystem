@@ -1,1 +1,1 @@
-Primitive store management system. Pandas test
+Primitive Store System Management. Openpyxl test

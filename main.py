@@ -1,4 +1,4 @@
-
+from openpyxl import load_workbook
 
 class Product:
     def __init__(self, name: str, toy_type: str, price: int | float, quantity: int):
@@ -55,34 +55,45 @@ class Order:
 
     def __str__(self):
         text = 'Order:\n'
-        for toy in self.toys:
-            text += toy + '\n'
-        text += f'Total price: {self.total_price}$'
+
+        for toy, quantity in self.toys:
+            text += f"{toy} x {quantity}\n"
+
+        text += f"Total price: {self.total_price}$"
 
         return text
 
     def __update_total_price(self):
-        self.__total_price = sum(toy.price for toy in self.toys)
+        self.__total_price = sum(
+            toy.price * quantity
+            for toy, quantity in self.toys
+        )
 
     def add_toy(self, new_toy: Product, new_quantity = 1):
         if new_quantity < 1:
-            raise ValueError("Quantity cannot be less then 1.")
+            raise ValueError("Quantity cannot be less than 1.")
 
         if new_toy.quantity >= new_quantity:
-            self.toys.append(new_toy)
-            new_toy.quantity(new_toy.quantity - new_quantity)
+
+            old_quantity = new_toy.quantity
+            new_toy.quantity = new_toy.quantity - new_quantity
+            self.toys.append((new_toy, new_quantity))
             self.__update_total_price()
-            print(f'Added {new_quantity} items of {new_toy} to order.')
+
+            print(
+                f"Added {new_quantity} items of {new_toy.name} "
+                f"(was {old_quantity}) to order."
+            )
         else:
-            print(f'Not enough {new_toy.name}`s quantity in stock.')
+            print(f'Not enough {new_toy.name} quantity in stock.')
 
 
 class Customer:
 
-    def __init__(self, name: str, email: str, order: list[Order]):
+    def __init__(self, name: str, email: str):
         self.name = name
         self.email = email
-        self.order = order
+        self.__order = []
 
     # Getters:
 
@@ -106,14 +117,63 @@ class Customer:
 
     def add_order(self, new_order: Order):
         if len(new_order.toys) > 0:
-            self.order.append(new_order)
+            self.__order.append(new_order)
         else:
             raise ValueError('Order must contain at least 1 element')
 
+    def print_order(self, index):
+        return str(self.__order[index])
 
 
-def main():
-    pass
+workbook = load_workbook('store.xlsx')
 
+# Toys:
 
+sheet_toys = workbook['toys']
 
+list_toys = []
+
+for row in sheet_toys.iter_rows(min_row=2, values_only=True):
+    name, toys_type, price, quantity = row
+    list_toys.append(Product(name, toys_type, price, quantity))
+
+# Customers:
+
+sheet_customers = workbook['customers']
+
+list_customers = []
+
+for row in sheet_customers.iter_rows(min_row=2, values_only=True):
+    name, email = row
+    list_customers.append(Customer(name, email))
+
+# Printing products:
+
+print('Products:\n')
+
+for number, toy in enumerate(list_toys, start=1):
+    print(number, toy)
+
+print('\nCustomers:\n')
+for number, customer in enumerate(list_customers, start=1):
+    print(number, customer)
+
+# Order creating:
+
+customer = list_customers[0]
+
+order = Order()
+
+order.add_toy(list_toys[0], 2)
+order.add_toy(list_toys[2], 3)
+
+customer.add_order(order)
+
+print('\nCustomer`s order:\n')
+print(customer.name)
+print(customer.print_order(0))
+
+print('\nProducts in stock:\n')
+
+for toy in list_toys:
+    print(toy)
